@@ -1,14 +1,12 @@
 """
 re_variation_analysis.py
-========================
 Post-processing for Re variation study (Re=100/200/400/1000), all on 40×40 grid.
 
 Generates in re_analysis_output/:
-  centerlines_Re{N}.png     — u(y) and v(x) vs Ghia (where available)
-  convergence_Re{N}.png     — div_hist and dU_hist per Re
-  convergence_all_Re.png    — div_hist all Re on one plot
-  vortex_centers.txt        — primary vortex centre x,y per Re
-
+  centerlines_Re{N}.png     u(y) and v(x) vs Ghia (where available)
+  convergence_Re{N}.png     div_hist and dU_hist per Re
+  convergence_all_Re.png    div_hist all Re on one plot
+  vortex_centers.txt        primary vortex centre x,y per Re
 Requires: cavity_40x40_Re100/, cavity_40x40_Re200/,
           cavity_40x40_Re400/, cavity_40x40_Re1000/
           each containing U_final.txt, div_hist.txt, dU_hist.txt
@@ -21,7 +19,7 @@ import matplotlib.pyplot as plt
 import matplotlib.tri as mtri
 from face_addressed_mesh_2d import Mesh
 
-# ── Config ────────────────────────────────────────────────────────
+# Config
 RE_LIST   = [100, 200, 400, 1000]
 CASE_DIR  = {re: f"cavity_40x40_Re{re}" for re in RE_LIST}
 OUT_DIR   = "re_analysis_output"
@@ -29,7 +27,7 @@ os.makedirs(OUT_DIR, exist_ok=True)
 
 COLORS = {100: "#1f77b4", 200: "#ff7f0e", 400: "#2ca02c", 1000: "#d62728"}
 
-# ── Ghia (1982) reference data ────────────────────────────────────
+# Ghia (1982) reference data
 # Re=100
 G100_Y = np.array([1.0,0.9766,0.9688,0.9609,0.9531,0.8516,0.7344,0.6172,
                    0.5,0.4531,0.2813,0.1719,0.1016,0.0703,0.0625,0.0547,0.0])
@@ -66,7 +64,7 @@ GHIA = {
     1000: (G1000_Y, G1000_U, G1000_X, G1000_V),
 }
 
-# ── Utilities ─────────────────────────────────────────────────────
+# Utilities
 def normalize(cc):
     x, y = cc[:, 0], cc[:, 1]
     x = (x - x.min()) / (x.max() - x.min())
@@ -104,7 +102,7 @@ def _save(fig, path):
     plt.close(fig)
     print(f"  [Saved] {path}")
 
-# ── Load all data ─────────────────────────────────────────────────
+# Load all data
 data = {}
 for re in RE_LIST:
     cdir = CASE_DIR[re]
@@ -117,7 +115,7 @@ for re in RE_LIST:
     x, y     = normalize(cc)
     data[re] = dict(U=U, div=div_hist, dU=dU_hist, x=x, y=y)
 
-# ── 1. Centerline plots per Re ────────────────────────────────────
+# 1. Centerline plots per Re
 print("\nPlotting centerlines ...")
 for re in RE_LIST:
     d   = data[re]
@@ -143,7 +141,7 @@ for re in RE_LIST:
 
     _save(fig, os.path.join(OUT_DIR, f"centerlines_Re{re}.png"))
 
-# ── 2a. Convergence per Re ────────────────────────────────────────
+# 2a. Convergence per Re
 print("Plotting convergence per Re ...")
 for re in RE_LIST:
     d     = data[re]
@@ -163,7 +161,7 @@ for re in RE_LIST:
 
     _save(fig, os.path.join(OUT_DIR, f"convergence_Re{re}.png"))
 
-# ── 2b. All Re div_hist on one plot ──────────────────────────────
+# 2b. All Re div_hist on one plot
 print("Plotting all-Re convergence comparison ...")
 fig, ax = plt.subplots(figsize=(9, 5))
 for re in RE_LIST:
@@ -176,7 +174,7 @@ ax.set_title("Convergence comparison — all Re, 40×40")
 ax.legend(); ax.grid(True, which="both", ls="--", alpha=0.4)
 _save(fig, os.path.join(OUT_DIR, "convergence_all_Re.png"))
 
-# ── 3. Vortex centre table ────────────────────────────────────────
+# 3. Vortex centre table
 print("Computing vortex centres ...")
 lines = [
     "=" * 52,
@@ -206,5 +204,6 @@ with open(path, "w") as f:
     f.write("\n".join(lines))
 print(f"  [Saved] {path}")
 print("\n".join(lines))
+
 
 print(f"\nDone. All outputs in '{OUT_DIR}/'")
