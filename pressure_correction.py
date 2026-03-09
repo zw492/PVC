@@ -1,21 +1,17 @@
 # pressure_correction.py
 from __future__ import annotations
-
 import numpy as np
 from typing import List, Tuple, Optional, Dict
-
 from face_addressed_mesh_2d import Mesh
 from sparse_cr import SparseCR, LinearSystem
 from fv_scalar import gauss_grad_cell
 
-
 def compute_face_flux_linear(mesh: Mesh, Uc: np.ndarray, bcU: dict) -> np.ndarray:
     """
     Task 5.2: Fpre = Sf · Uf, with Uf from linear interpolation of Uc.
-
     Uf:
-      - internal face: (U_owner + U_nei)/2
-      - boundary face:
+      internal face: (U_owner + U_nei)/2
+       boundary face:
           fixedValue -> use prescribed U
           zeroGradient -> use owner U
     """
@@ -81,14 +77,13 @@ def assemble_laplace_variable_gamma(
 ) -> Tuple[List[Tuple[int, int, float]], np.ndarray]:
     """
     Assemble div( gamma grad phi ) with cell-centered gamma (orthogonal FV).
-
     For internal face f between owner o and neighbour n:
         coeff = gamma_f * |Sf| * delta
     where gamma_f is arithmetic mean of gamma_cell(o), gamma_cell(n).
-
+    
     Boundary faces:
-      - fixedValue: Dirichlet (adds to RHS)
-      - zeroGradient: Neumann => no contribution
+       fixedValue: Dirichlet (adds to RHS)
+       zeroGradient: Neumann => no contribution
     """
     nC = len(mesh.cells)
     nF = len(mesh.faces)
@@ -178,7 +173,7 @@ def solve_pressure_equation(
     Fpre: np.ndarray,
     aP_x: np.ndarray,
     aP_y: np.ndarray,
-    alphaU: float = 1.0,   # kept for API compatibility; no longer used in body
+    alphaU: float = 1.0,   # kept for API compatibility; not used in body
     bc_p: Optional[dict] = None,
     ref_cell: int = 0,
     gs_sweeps: int = 200,
@@ -191,13 +186,11 @@ def solve_pressure_equation(
     max_sweeps: int = 50000,
 ) -> np.ndarray | Tuple[np.ndarray, list]:
     """
-    Task 5.3: Solve pressure equation (PDF Eq. 5):
+    Task 5.3: Solve pressure equation (PDF's Eq. 5):
         div( (1/aP) grad p ) = div(u)  (FV integrated => RHS = -div(Fpre))
-
     SIMPLE choice:
         aP = 0.5*(aP_x + aP_y)  (pre-relaxation diagonal from momentum)
-        gamma_cell = 1.0/aP      (NOT alphaU/aP — Jasak correction)
-
+        gamma_cell = 1.0/aP      (NOT alphaU/aP)
     For all-Neumann: pin one reference cell.
     """
     nC = len(mesh.cells)
@@ -217,7 +210,7 @@ def solve_pressure_equation(
     trip, b_lap = assemble_laplace_variable_gamma(mesh, gamma_cell, bc_p, source=None)
     b = b_lap + rhs
 
-    # optional fixedCell reference in bc_p
+    # fixedCell reference in bc_p
     ref = bc_p.get("reference", None) if bc_p is not None else None
     if isinstance(ref, dict) and ref.get("type") == "fixedCell":
         ref_cell = int(ref.get("cell", ref_cell))
@@ -252,7 +245,7 @@ def solve_pressure_equation(
     if return_history:
         p, r0, rf, sweeps, hist = sys.solve_gs_to_tol(
             x0=p0,
-            max_sweeps=gs_sweeps,      # <<< use gs_sweeps passed by caller
+            max_sweeps=gs_sweeps,      # < use gs_sweeps passed by caller
             tol_abs=tol_abs,
             tol_rel=tol_rel,
             report_every=report_every,
@@ -264,7 +257,7 @@ def solve_pressure_equation(
 
     p, r0, rf, sweeps = sys.solve_gs_to_tol(
         x0=p0,
-        max_sweeps=gs_sweeps,          # <<< use gs_sweeps passed by caller
+        max_sweeps=gs_sweeps,          # < use gs_sweeps passed by caller
         tol_abs=tol_abs,
         tol_rel=tol_rel,
         report_every=report_every,
@@ -348,4 +341,5 @@ def correct_cell_velocity(
     Ucorr = Ustar.copy()
     Ucorr[:, 0] = Ustar[:, 0] - (1.0 / aP_x) * gradp[:, 0]
     Ucorr[:, 1] = Ustar[:, 1] - (1.0 / aP_y) * gradp[:, 1]
+
     return Ucorr
