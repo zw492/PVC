@@ -3,11 +3,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Dict, Any, Tuple, List
 import numpy as np
-
 from face_addressed_mesh_2d import Mesh
 
 Vec2 = Tuple[float, float]
-
 
 def interp_face_scalar(mesh: Mesh, phi: np.ndarray) -> np.ndarray:
     """
@@ -33,8 +31,7 @@ def gauss_grad_cell(mesh: Mesh, phi: np.ndarray, bc: Dict[str, Any] | None = Non
     Cell-centre gradient using Gauss theorem:
       grad(phi)_P = (1/V_P) * sum_f (phi_f * Sf_f)
     In 2D, V_P is area.
-
-    bc (optional): boundary conditions for phi.
+    bc: boundary conditions for phi.
       bc[patchName] = {"type":"fixedValue","value":...} or {"type":"zeroGradient"}
     If fixedValue, we override phi_f on those boundary faces.
     """
@@ -44,7 +41,7 @@ def gauss_grad_cell(mesh: Mesh, phi: np.ndarray, bc: Dict[str, Any] | None = Non
 
     phi_f = interp_face_scalar(mesh, phi)
 
-    # Apply fixedValue BC to face values if provided
+    # Apply fixedValue BC to face values
     if bc is not None:
         patch_faces = {p.name: p.face_ids for p in mesh.patches}
         # B1: require BC specification for every patch in the mesh
@@ -96,11 +93,10 @@ def assemble_laplace(
     """
     Assemble diffusion operator for:
       -div(gamma * grad(phi)) = source
-
     Returns:
       triplets: list of (row, col, value) for SparseCR
       b: RHS vector
-
+    
     Discretisation (standard FV):
       For internal face f between P(owner) and N(neighbour):
         a_PN += gamma * |Sf| * delta
@@ -339,5 +335,6 @@ def assemble_ddt(
         aP = Vp / dt
         triplets.append((P, P, aP))
         b[P] += aP * phi_old[P]
+
 
     return triplets, b
