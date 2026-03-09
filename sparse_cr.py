@@ -1,5 +1,4 @@
 # Task 4
-
 # sparse_cr.py
 from __future__ import annotations
 from dataclasses import dataclass
@@ -140,13 +139,10 @@ class LinearSystem:
     ):
         """
         Iterate GS until residual <= max(tol_abs, tol_rel * r0) or max_sweeps reached.
-
         Default return:
             (x, r0, r_final, sweeps_used)
-
         If return_history=True, returns:
             (x, r0, r_final, sweeps_used, history)
-
         where history is a list of (sweep_index, residual_norm2).
         """
         n = self.A.nrows
@@ -190,4 +186,5 @@ class LinearSystem:
             if not history or history[-1][0] != max_sweeps:
                 history.append((max_sweeps, float(rf)))
             return x, r0, rf, max_sweeps, history
+
         return x, r0, rf, max_sweeps
