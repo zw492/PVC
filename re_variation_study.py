@@ -1,25 +1,20 @@
 """
 re_variation_study.py
-=====================
 Step 5 (Report): Re number variation study
 Re = 100, 200, 400, 1000
 
 For each Re:
-  - Run solver (or load if cavity_{NX}x{NY}_Re{Re}/U_final.txt exists)
-  - Plot velocity magnitude
-  - Plot centerline u(y) and v(x)
-  - Record vortex core position, convergence iters
+  Run solver (or load if cavity_{NX}x{NY}_Re{Re}/U_final.txt exists)
+  Plot velocity magnitude
+  Plot centerline u(y) and v(x)
+  Record vortex core position, convergence iters
 
 Produces:
   analysis_output/velocity_Re{Re}.png
   analysis_output/centerline_Re_comparison.png
   analysis_output/re_study_summary.txt
 
-Usage:
-  python re_variation_study.py
-
-Note: Higher Re takes more iterations and may not fully converge.
-      Re=1000 with 40x40 may show divergence — reduce alphaU if needed.
+Note: Higher Re takes more iterations and may not fully converge to specified tol at 800 iters.
 """
 
 import os, json
@@ -36,13 +31,13 @@ from pressure_correction import (
     divergence_of_face_flux,
 )
 
-# ── Ghia data (Re=100 only — for reference line on plots) ─────────────────────
+# Ghia data (Re=100 only, for reference line on plots)
 GHIA_Y_U = np.array([1.,0.9766,0.9688,0.9609,0.9531,0.8516,0.7344,0.6172,
                      0.5,0.4531,0.2813,0.1719,0.1016,0.0703,0.0625,0.0547,0.])
 GHIA_U   = np.array([1.,0.8412,0.7887,0.7372,0.6872,0.2315,0.00332,-0.1364,
                      -0.2058,-0.2109,-0.1566,-0.1015,-0.06434,-0.04775,-0.04192,-0.03717,0.])
 
-# ── Re study config ────────────────────────────────────────────────────────────
+# Re study config
 RE_LIST  = [100, 200, 400, 1000]
 NX = NY  = 40        # fixed grid for Re comparison (keep mesh constant)
 N_OUTER  = 800       # more iterations for higher Re
@@ -50,10 +45,10 @@ OUT_DIR  = "analysis_output"
 
 # Under-relaxation per Re (higher Re needs more conservative relaxation)
 RELAX = {
-    100:  (0.7, 0.3),
-    200:  (0.6, 0.3),
-    400:  (0.5, 0.2),
-    1000: (0.4, 0.15),
+    100:  0.7,
+    200:  0.6,
+    400:  0.5,
+    1000: 0.4,
 }
 COLORS = {100: "#1f77b4", 200: "#ff7f0e", 400: "#2ca02c", 1000: "#d62728"}
 os.makedirs(OUT_DIR, exist_ok=True)
@@ -94,7 +89,7 @@ def find_vortex_core(x, y, Ux, Uy):
 
 
 def solve_for_re(Re):
-    aU, aP = RELAX[Re]
+    aU = RELAX[Re]
     case   = f"cavity_{NX}x{NY}_Re{Re}"
     u_path = os.path.join(case, "U_final.txt")
     p_path = os.path.join(case, "p_final.txt")
@@ -210,7 +205,7 @@ def main():
         plt.savefig(fname, dpi=200); plt.close()
         print(f"  [Saved] {fname}")
 
-    # ── Combined centerline comparison ──────────────────────────────────────
+    # Combined centerline comparison
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
     for Re, d in all_results.items():
         axes[0].plot(d["u_line"], d["y_line"], color=COLORS[Re],
@@ -232,7 +227,7 @@ def main():
     plt.savefig(fname, dpi=200); plt.close()
     print(f"[Saved] {fname}")
 
-    # ── Convergence comparison across Re ────────────────────────────────────
+    # Convergence comparison across Re
     fig, ax = plt.subplots(figsize=(9, 5))
     for Re, d in all_results.items():
         dh = d["div_hist"]
@@ -247,7 +242,7 @@ def main():
     plt.savefig(fname, dpi=200); plt.close()
     print(f"[Saved] {fname}")
 
-    # ── Vortex core trajectory plot ──────────────────────────────────────────
+    # Vortex core trajectory plot
     re_vals = list(all_results.keys())
     vx_vals = [all_results[r]["vortex"][0] for r in re_vals]
     vy_vals = [all_results[r]["vortex"][1] for r in re_vals]
@@ -269,7 +264,7 @@ def main():
     plt.savefig(fname, dpi=200); plt.close()
     print(f"[Saved] {fname}")
 
-    # ── Summary ─────────────────────────────────────────────────────────────
+    # Summary
     summary_lines += [
         "",
         "Expected physics with increasing Re:",
