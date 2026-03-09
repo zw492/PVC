@@ -1,14 +1,10 @@
 # Task 3
-
 # write_lid_driven_cavity_case.py
 from __future__ import annotations
-
 from pathlib import Path
 import json
 import numpy as np
-
 from face_addressed_mesh_2d import generate_cartesian_mesh_files, Mesh
-
 
 def write_lid_driven_cavity_case(
     case_dir: str,
@@ -20,16 +16,14 @@ def write_lid_driven_cavity_case(
 ) -> None:
     """
     Create a complete 2D lid-driven cavity 'case' folder:
-
       case_dir/
         mesh/points faces cells boundary
         0/U.txt 0/p.txt
         params.json
         bc.json
-
     Notes:
-      - Pressure is kinematic pressure p = P/rho.
-      - Pressure BC is zeroGradient on all walls; a reference cell is fixed to remove nullspace.
+        Pressure is kinematic pressure p = P/rho.
+        Pressure BC is zeroGradient on all walls; a reference cell is fixed to remove nullspace.
     """
     case = Path(case_dir)
     mesh_dir = case / "mesh"
@@ -84,8 +78,8 @@ def write_lid_driven_cavity_case(
     }
     (case / "bc.json").write_text(json.dumps(bc, indent=2))
 
-    # Friendly confirmation
-    print(f"✅ Case written to: {case.resolve()}")
+    # Confirmation
+    print(f"   Case written to: {case.resolve()}")
     print(f"   Mesh: {nx}x{ny}, d={d}, Re={Re}, nu={nu}")
     print(f"   Cells: {nC}, Patches: {[p.name for p in m.patches]}")
     print(f"   Mesh files: {(mesh_dir / 'points').name}, {(mesh_dir / 'faces').name}, {(mesh_dir / 'cells').name}, {(mesh_dir / 'boundary').name}")
@@ -97,3 +91,4 @@ if __name__ == "__main__":
 
     # Optional: also create a 20x20 case for C2 refinement check
     write_lid_driven_cavity_case("cavity_case_20", nx=20, ny=20, d=0.1, U_lid=1.0, Re=100.0)
+
