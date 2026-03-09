@@ -1,19 +1,16 @@
 # momentum_predictor.py
 from __future__ import annotations
-
 import numpy as np
 from typing import List, Tuple, Optional, Dict
-
 from face_addressed_mesh_2d import Mesh
 from sparse_cr import SparseCR, LinearSystem
-
 
 def interp_face_vector(mesh: Mesh, Uc: np.ndarray, bcU: dict) -> np.ndarray:
     """
     Linear interpolation of cell-centre velocity to faces.
     Returns Uf of shape (nF, 2).
-      - internal faces: average owner/neigh
-      - boundary faces:
+       internal faces: average owner/neigh
+       boundary faces:
           fixedValue -> use prescribed value
           zeroGradient -> use owner value
     """
@@ -64,8 +61,8 @@ def assemble_convection_upwind_from_flux(
     Assemble div(F * phi) with upwind using provided face flux F (= Sf·Uf).
 
     Discrete convention:
-      - internal faces contribute via upwind split based on sign(F)
-      - boundary faces:
+       internal faces contribute via upwind split based on sign(F)
+       boundary faces:
           fixedValue required on inflow (F<0 into owner)
           zeroGradient allowed on outflow
     """
@@ -154,7 +151,6 @@ def apply_implicit_under_relaxation(
     """
     Implicit under-relaxation:
       A phi = b  ->  (A/alpha) phi = b + (1-alpha)/alpha * diag(A) * phi_old
-
     Returns:
       trip_relaxed, b_relaxed, aP (diag(A) of original A)
     """
@@ -199,13 +195,11 @@ def momentum_predictor(
     """
     Task 5.1 momentum predictor (pressure gradient omitted):
       div(U U) - div(nu grad U) = 0
-
     Solves two scalar transport problems:
       Ux* and Uy*
-
     Returns:
-      - default: (Ustar (nC,2), aP_x (nC,), aP_y (nC,))
-      - if return_history: adds hist_all dict with keys 'Ux','Uy' containing GS residual histories
+      default: (Ustar (nC,2), aP_x (nC,), aP_y (nC,))
+      if return_history: adds hist_all dict with keys 'Ux','Uy' containing GS residual histories
     """
     nC = len(mesh.cells)
     if U.shape != (nC, 2):
@@ -244,7 +238,7 @@ def momentum_predictor(
         phi_old = U[:, comp].copy()
         trip_rel, b_rel, aP = apply_implicit_under_relaxation(nC, trip, b, phi_old, alphaU)
 
-        # Optional Task 8 reporting: matrix coefficients for selected cells
+        # Task 8 reporting: matrix coefficients for selected cells
         if report_cells is not None:
             c_int, c_bnd = report_cells
             for c in [int(c_int), int(c_bnd)]:
@@ -290,4 +284,5 @@ def momentum_predictor(
 
     if return_history:
         return Ustar, aP_all[0], aP_all[1], hist_all
+
     return Ustar, aP_all[0], aP_all[1]
