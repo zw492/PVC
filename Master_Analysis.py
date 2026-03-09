@@ -1,32 +1,23 @@
 """
 Master_Analysis.py
-==================
 Single script covering Report Steps 3–5 (Tasks 6–12 + mesh refinement).
-
 Run ONCE after test20x20.py has completed (cavity_case/ exists with U_final.txt).
 For 20×20 and 80×80, load_or_run/_run_solver will auto-create and solve if results not found.
-
 Produces in analysis_output/:
-  ── Step 3 (Tasks 8-12) ──────────────────────────────────────────
+  Step 3 (Tasks 8-12)
   matrix_coefficients.txt        Task 8 & 9: momentum + pressure coefficients
   pressure_field_NxN.png         Task 11: pressure contour
   velocity_field_NxN.png         Task 11: velocity magnitude + vectors
   convergence_outer_NxN.png      Task 12: outer SIMPLE residual history
   convergence_inner_GS.png       Task 12: inner GS schematic (based on real log data)
   convergence_all_grids.png      Task 12: all grids on one plot
-
-  ── Step 4 (Validation) ──────────────────────────────────────────
+  Step 4 (Validation)
   centerline_all_grids_Re100.png all grids vs Ghia (1982)
   error_table.txt                L2, Linf, extremes, convergence order p
-
-  ── Step 5 (Mesh refinement) ─────────────────────────────────────
+  Step 5 (Mesh refinement)
   velocity_magnitude_NxN_Re100.png  velocity magnitude per grid
   iterations_table.txt           iterations to converge per grid
-
-Usage:
-  python master_analysis.py
-
-NOTE: Re variation study is in re_variation_study.py (run separately — it's slow).
+NOTE: Re variation study is in re_variation_study.py (run separately).
 """
 
 from __future__ import annotations
@@ -45,10 +36,7 @@ from pressure_correction import (
     assemble_laplace_variable_gamma, pin_pressure_reference,
 )
 
-# ══════════════════════════════════════════════════════════════════
 # CONFIG
-# ══════════════════════════════════════════════════════════════════
-
 RE        = 100
 GRID_SIZES = [20, 40, 80]
 ALPHA_U   = 0.7
@@ -78,10 +66,7 @@ GHIA_V   = np.array([0.0000,-0.05906,-0.07391,-0.08864,-0.2453,-0.2245,-0.1691,
 os.makedirs(OUT_DIR, exist_ok=True)
 
 
-# ══════════════════════════════════════════════════════════════════
 # UTILITIES
-# ══════════════════════════════════════════════════════════════════
-
 def normalize(cc):
     x, y = cc[:, 0], cc[:, 1]
     x = (x - x.min()) / (x.max() - x.min())
@@ -114,10 +99,8 @@ def compute_errors(u_num, u_ref, v_num, v_ref):
     }
 
 
-# ══════════════════════════════════════════════════════════════════
-# SOLVER  (history-tracking version — saves div_hist + dU_hist)
-# ══════════════════════════════════════════════════════════════════
 
+# SOLVER  (history-tracking version: saves div_hist + dU_hist)
 def _run_solver(case_dir, n):
     """Run SIMPLE for grid n×n; return (mesh, U, p, div_hist, dU_hist, n_conv)."""
     if not os.path.exists(case_dir):
@@ -196,21 +179,18 @@ def load_or_run(n):
                        else np.full_like(div_hist, np.nan)
             n_conv   = len(div_hist)
         else:
-            # U_final exists but no history → re-run just to get history
+            # U_final exists but no history: re-run just to get history
             print(f"    No residual history found — re-running to capture it …")
             _, U, p, div_hist, dU_hist, n_conv = _run_solver(case_dir, n)
 
         return mesh, U, p, div_hist, dU_hist, n_conv
 
-    # Nothing saved yet — full run
+    # full run
     print(f"  [Run] {n}×{n} Re={RE}")
     return _run_solver(case_dir, n)
 
 
-# ══════════════════════════════════════════════════════════════════
 # PLOTTING HELPERS
-# ══════════════════════════════════════════════════════════════════
-
 COLORS = {20: "#1f77b4", 40: "#ff7f0e", 80: "#2ca02c"}
 LS     = {20: "--",      40: "-.",       80: "-"}
 
@@ -340,7 +320,7 @@ def plot_inner_gs_schematic(log_r0_Ux, log_rf_Ux, log_r0_Uy, log_rf_Uy):
 def plot_all_grids_convergence(conv_data):
     fig, ax = plt.subplots(figsize=(9, 5))
     for n, (dh, _, nc) in conv_data.items():
-        label = f"{n}×{n}  (plateau@iter≈{nc})"
+        label = f"{n}×{n}  (stopped@iter≈{nc})"
         ax.semilogy(np.arange(1, len(dh)+1), dh, color=COLORS[n], lw=1.8, label=label)
     ax.set_xlabel("Outer iteration"); ax.set_ylabel(r"$\|\nabla\cdot F\|_\infty$")
     ax.set_title(f"Convergence comparison — Re={RE}, all grids")
@@ -362,10 +342,7 @@ def plot_centerlines(results):
     _save(fig, os.path.join(OUT_DIR, f"centerline_all_grids_Re{RE}.png"))
 
 
-# ══════════════════════════════════════════════════════════════════
 # TASKS 8 & 9  — Matrix coefficients
-# ══════════════════════════════════════════════════════════════════
-
 def report_matrix_coefficients(mesh, U, case_dir):
     bc     = json.loads(open(f"{case_dir}/bc.json").read())
     params = json.loads(open(f"{case_dir}/params.json").read())
@@ -462,10 +439,7 @@ def report_matrix_coefficients(mesh, U, case_dir):
     print(f"  [Saved] {path}")
 
 
-# ══════════════════════════════════════════════════════════════════
 # ERROR TABLE + CONVERGENCE ORDER
-# ══════════════════════════════════════════════════════════════════
-
 def write_error_table(results):
     ns   = sorted(results.keys())
     lines = ["=" * 72,
@@ -529,10 +503,7 @@ def write_iterations_table(conv_data):
     print("\n".join(lines))
 
 
-# ══════════════════════════════════════════════════════════════════
 # MAIN
-# ══════════════════════════════════════════════════════════════════
-
 def main():
     print(f"\n{'='*60}")
     print(f"  master_analysis.py  —  Re={RE}")
@@ -541,7 +512,7 @@ def main():
     results   = {}   # n -> dict with mesh, U, p, errors, centerlines
     conv_data = {}   # n -> (div_hist, dU_hist, n_conv)
 
-    # ── Step 1: Load or solve all grids ────────────────────────────
+    # Step 1: Load or solve all grids
     for n in GRID_SIZES:
         print(f"\n── Grid {n}×{n} ──")
         mesh, U, p, div_hist, dU_hist, n_conv = load_or_run(n)
@@ -562,36 +533,36 @@ def main():
                         "errors": compute_errors(u_num, GHIA_U, v_num, GHIA_V)}
         conv_data[n] = (div_hist, dU_hist, n_conv)
 
-    # ── Step 2: All field plots (Task 11) ──────────────────────────
+    # Step 2: All field plots (Task 11)
     print("\n── Plotting fields (Task 11) ──")
     for n, d in results.items():
         plot_velocity_magnitude(d["mesh"], d["U"], n)
         plot_velocity_with_vectors(d["mesh"], d["U"], n)
         plot_pressure(d["mesh"], d["p"], n)
 
-    # ── Step 3: Convergence plots (Task 12) ────────────────────────
+    # Step 3: Convergence plots (Task 12)
     print("\n── Plotting convergence (Task 12) ──")
     for n, (dh, du, nc) in conv_data.items():
         plot_outer_convergence(dh, du, n)
     plot_all_grids_convergence(conv_data)
 
-    # Inner GS schematic — use real values from 40×40 log
+    # Inner GS schematic: use real values from 40×40 log
     # From log: Ux iter1 start=0.01265, end~1e-18; Uy start=0 (or very small after iter 1)
     plot_inner_gs_schematic(
         log_r0_Ux=0.01265, log_rf_Ux=1.6e-18,
         log_r0_Uy=0.001,   log_rf_Uy=1e-19   # Uy picks up after iter 1
     )
 
-    # ── Step 4: Centerline + error table ───────────────────────────
+    # Step 4: Centerline + error table
     print("\n── Centerline comparison + error table (Step 4) ──")
     plot_centerlines(results)
     write_error_table(results)
 
-    # ── Step 5: Mesh refinement table ─────────────────────────────
+    # Step 5: Mesh refinement table
     print("\n── Iterations table (Step 5) ──")
     write_iterations_table(conv_data)
 
-    # ── Tasks 8 & 9: Matrix coefficients ─────────────────────────
+    # Tasks 8 & 9: Matrix coefficients
     print("\n── Matrix coefficients (Tasks 8 & 9) ──")
     d40 = results[40]
     report_matrix_coefficients(d40["mesh"], d40["U"], CASE_DIR[40])
