@@ -1,5 +1,4 @@
 # Tasks 1-2
-
 # face_addressed_mesh_2d.py
 from __future__ import annotations
 from dataclasses import dataclass
@@ -10,9 +9,7 @@ from typing import List, Tuple, Dict, Iterable, Optional
 
 Vec2 = Tuple[float, float]
 
-# -----------------------------
-# Parsing utilities (Foam-ish)
-# -----------------------------
+# Parsing utilities
 _COMMENT_RE = re.compile(r"//.*?$", flags=re.MULTILINE)
 
 def _strip_comments(s: str) -> str:
@@ -130,9 +127,7 @@ def _read_boundary(ts: _TokStream) -> List[Tuple[str, List[int]]]:
     ts.expect(")")
     return patches
 
-# -----------------------------
 # Geometry helpers (2D)
-# -----------------------------
 def _add(a: Vec2, b: Vec2) -> Vec2:
     return (a[0] + b[0], a[1] + b[1])
 
@@ -209,9 +204,7 @@ def _face_Sf_raw(points: List[Vec2], face_verts: List[int]) -> Vec2:
     # Rotate +90 degrees: (tx,ty) -> (ty,-tx)
     return (t[1], -t[0])
 
-# -----------------------------
 # Mesh data structures
-# -----------------------------
 @dataclass
 class BoundaryPatch:
     name: str
@@ -264,9 +257,7 @@ class Mesh:
         mesh = _build_mesh(pts, faces, cells, patches)
         return mesh
 
-# -----------------------------
 # File parsers
-# -----------------------------
 def _parse_points(path: Path) -> List[Vec2]:
     toks = _tokenize(path.read_text())
     ts = _TokStream(toks)
@@ -295,9 +286,7 @@ def _parse_boundary(path: Path) -> List[BoundaryPatch]:
         pass
     return [BoundaryPatch(name, fids) for name, fids in patches_raw]
 
-# -----------------------------
 # Build derived topology + geometry
-# -----------------------------
 def _build_mesh(
     points: List[Vec2],
     faces: List[List[int]],
@@ -463,9 +452,8 @@ def _build_mesh(
         fx=fx,
     )
 
-# -----------------------------
+
 # Cartesian mesh generator (PVC Task 2 helper)
-# -----------------------------
 def generate_cartesian_mesh_files(
     out_folder: str | Path,
     nx: int,
@@ -586,11 +574,9 @@ def _write_boundary(path: Path, patches: List[Tuple[str, List[int]]]) -> None:
     lines.append(")")
     path.write_text("\n".join(lines) + "\n")
 
-# -----------------------------
-# Quick self-test / demo usage
-# -----------------------------
+# Quick self-test
 if __name__ == "__main__":
-    # 1) Generate a 4x3 mesh and read it back
+    # Generate a 4x3 mesh and read it back
     folder = Path("mesh_demo_4x3")
     generate_cartesian_mesh_files(folder, nx=4, ny=3, Lx=1.0, Ly=1.0)
 
@@ -603,3 +589,4 @@ if __name__ == "__main__":
     print("Sample face fx/delta/magSf for first 5 faces:")
     for f in range(5):
         print(f"f={f}: neigh={m.face_neighbour[f]}, fx={m.fx[f]:.4f}, delta={m.delta[f]:.4f}, |Sf|={m.magSf[f]:.4f}")
+
