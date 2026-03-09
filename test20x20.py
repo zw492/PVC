@@ -1,13 +1,9 @@
 """
 test20x20.py
-============
 Temporary single-grid sanity check: runs the corrected SIMPLE solver on the
 20×20 cavity (Re=100, n_outer=400) and produces the same diagnostic outputs
 as Master_Analysis.py would for that grid, such that I can verify correctness
 before committing the full cluster run.
-
-Expected results (Jasak):
-  Accumulated pressure range should be approximately -4 to +4 m²/s²
 
 Produces in test_20x20_output/:
   convergence_outer_20x20.png
@@ -18,9 +14,6 @@ Produces in test_20x20_output/:
   pressure_field_20x20.png
   velocity_field_20x20.png
   velocity_magnitude_20x20_Re100.png
-
-Usage:
-  python test_20x20.py
 """
 
 from __future__ import annotations
@@ -39,7 +32,7 @@ from pressure_correction import (
     assemble_laplace_variable_gamma, pin_pressure_reference,
 )
 
-# ── Config ────────────────────────────────────────────────────────
+# Config
 N        = 20
 RE       = 100
 ALPHA_U  = 0.7
@@ -63,7 +56,7 @@ GHIA_V   = np.array([0.0000,-0.05906,-0.07391,-0.08864,-0.2453,-0.2245,-0.1691,
 os.makedirs(OUT_DIR, exist_ok=True)
 
 
-# ── Utilities ─────────────────────────────────────────────────────
+# Utilities
 
 def normalize(cc):
     x, y = cc[:, 0], cc[:, 1]
@@ -89,7 +82,7 @@ def _save(fig, fname):
     print(f"  [Saved] {fname}")
 
 
-# ── Solver ────────────────────────────────────────────────────────
+# Solver
 
 def run_solver():
     if not os.path.exists(CASE_DIR):
@@ -122,25 +115,25 @@ def run_solver():
 
         U_old = U.copy()
 
-        # Step 5.1 — Momentum predictor (pre-relaxation aP returned)
+        # Step 5.1 Momentum predictor
         Ustar, aP_x, aP_y = momentum_predictor(
             mesh, U, nu, bcU, alphaU=ALPHA_U, gs_sweeps=GS_SWEEPS)
 
-        # Step 5.2 — Precursor face flux
+        # Step 5.2 Precursor face flux
         Fpre = compute_face_flux_linear(mesh, Ustar, bcU)
 
-        # Step 5.3 — Pressure correction (gamma = 1/aP, NOT alphaU/aP)
+        # Step 5.3 Pressure correction (gamma = 1/aP)
         p_prime = solve_pressure_equation(
             mesh, Fpre, aP_x, aP_y, bc_p=bcp,
             ref_cell=0, gs_sweeps=GS_SWEEPS,
             p_init=p_prime_init)          # warm-start: reuse previous p_prime
         p_prime_init = p_prime.copy()     # update for next iteration
 
-        # Step 5.4 — Flux and velocity correction (1/aP, NOT alphaU/aP)
+        # Step 5.4 Flux and velocity correction
         Fcorr = correct_face_flux(mesh, Fpre, p_prime, aP_x, aP_y)
         U     = correct_cell_velocity(mesh, Ustar, p_prime, aP_x, aP_y, bc_p=bcp)
 
-        # Pressure accumulation: full update (no alphaP factor)
+        # Pressure accumulation: full update
         p += p_prime
 
         div_inf = float(np.max(np.abs(divergence_of_face_flux(mesh, Fcorr))))
@@ -164,7 +157,7 @@ def run_solver():
     return mesh, U, p, np.array(div_hist), np.array(dU_hist), n_conv
 
 
-# ── Plots ─────────────────────────────────────────────────────────
+# Plots
 
 def plot_outer_convergence(div_hist, dU_hist):
     iters = np.arange(1, len(div_hist) + 1)
@@ -374,8 +367,8 @@ def report_matrix_coefficients(mesh, U):
         pres_desc(c_int, "INTERNAL CELL"),
         pres_desc(c_lid, "LID-ADJACENT (top wall)"),
         "\nNotes:",
-        "  Momentum aP is the PRE-relaxation diagonal (not aP/alphaU)",
-        "  Pressure gamma = 1/aP  (NOT alphaU/aP)",
+        "  Momentum aP is the PRE-relaxation diagonal",
+        "  Pressure gamma = 1/aP",
         "  Pressure off-diag = -gamma_f*|Sf|*delta_f  (always negative)",
         "  For all-Neumann BCs: sum(row) = 0 for interior cells",
     ]
@@ -384,7 +377,7 @@ def report_matrix_coefficients(mesh, U):
     print(f"  [Saved] {path}")
 
 
-# ── Main ──────────────────────────────────────────────────────────
+# Main
 
 def main():
     print(f"\n{'='*60}")
@@ -420,4 +413,5 @@ def main():
 
 
 if __name__ == "__main__":
+
     main()
