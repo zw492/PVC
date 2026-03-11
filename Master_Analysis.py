@@ -502,6 +502,117 @@ def write_iterations_table(conv_data):
     print(f"  [Saved] {path}")
     print("\n".join(lines))
 
+def save_task6_task7_diagnostics(mesh, U, case_dir):
+    """
+    Tasks 6 & 7: Save CSV diagnostics for the converged 40x40 Re=100 base case.
+    task6_flux_verification.csv:
+        Fpre on every boundary face (must all be ~0, Task 6 part 1)
+        Global sum of Fpre over all internal+boundary faces (must be ~0, Task 6 part 2)
+    task7_divergence_verification.csv:
+        div(Fpre) and div(Fcorr) per cell
+        Fpre != 0 per cell; Fcorr ~= 0 per cell (Task 7)
+    """
+    import csv
+
+    bc     = json.loads(open(f"{case_dir}/bc.json").read())
+    params = json.loads(open(f"{case_dir}/params.json").read())
+    nu     = float(params["nu"])
+    bcU    = bc["U"]
+    bcp    = bc.get("p", None)
+    if bcp:
+        bcp = {k: v for k, v in bcp.items()
+               if k in {pt.name for pt in mesh.patches}}
+
+    # One pass with converged U to get Ustar, aP_x, aP_y, Fpre, Fcorr
+    Ustar, aP_x, aP_y = momentum_predictor(
+        mesh, U, nu, bcU, alphaU=ALPHA_U, gs_sweeps=GS_SWEEPS)
+    Fpre    = compute_face_flux_linear(mesh, Ustar, bcU)
+    p_prime = solve_pressure_equation(
+        mesh, Fpre, aP_x, aP_y, alphaU=ALPHA_U, bc_p=bcp,
+        ref_cell=0, gs_sweeps=GS_SWEEPS)
+    Fcorr   = correct_face_flux(mesh, Fpre, p_prime, aP_x, aP_y)
+
+    nF = len(mesh.faces)
+    nC = len(mesh.cells)
+
+    # Task 6, part 1: Fpre on every boundary face
+    # Build patch lookup: face_id -> patch_name
+    face_patch = {}
+    for patch in mesh.patches:
+        for f in patch.face_ids:
+            face_patch[f] = patch.name
+
+    bnd_rows  = []
+    bnd_total = 0.0
+    for f in range(nF):
+        if mesh.face_neighbour[f] == -1:
+            bnd_rows.append({
+                "face_id":    f,
+                "patch":      face_patch.get(f, "unknown"),
+                "Fpre":       float(Fpre[f]),
+            })
+            bnd_total += float(Fpre[f])
+
+    path6a = os.path.join(OUT_DIR, "task6_boundary_Fpre.csv")
+    with open(path6a, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=["face_id", "patch", "Fpre"])
+        w.writeheader()
+        w.writerows(bnd_rows)
+        w.writerow({"face_id": "TOTAL", "patch": "all boundary faces", "Fpre": bnd_total})
+    print(f"  [Saved] {path6a}  (boundary Fpre sum = {bnd_total:.3e})")
+
+    # Task 6, part 2: global sum of Fpre over all cells
+    div_pre  = divergence_of_face_flux(mesh, Fpre)   # per-cell sum(sign*Fpre)
+    global_sum_pre = float(np.sum(div_pre))
+
+    path6b = os.path.join(OUT_DIR, "task6_global_flux_sum.csv")
+    with open(path6b, "w", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["quantity", "value"])
+        w.writerow(["sum_over_all_cells_of_div(Fpre)", global_sum_pre])
+        w.writerow(["n_boundary_faces", len(bnd_rows)])
+        w.writerow(["sum_Fpre_on_boundary_faces", bnd_total])
+    print(f"  [Saved] {path6b}  (global div(Fpre) sum = {global_sum_pre:.3e})")
+
+    # Task 7: div(Fpre) and div(Fcorr) per cell
+    div_corr = divergence_of_face_flux(mesh, Fcorr)
+    cc       = np.array(mesh.cell_centers)
+    x, y     = normalize(cc)
+
+    path7 = os.path.join(OUT_DIR, "task7_divergence_per_cell.csv")
+    with open(path7, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=[
+            "cell_id", "x_norm", "y_norm",
+            "div_Fpre", "div_Fcorr"])
+        w.writeheader()
+        for c in range(nC):
+            w.writerow({
+                "cell_id":   c,
+                "x_norm":    round(float(x[c]), 5),
+                "y_norm":    round(float(y[c]), 5),
+                "div_Fpre":  float(div_pre[c]),
+                "div_Fcorr": float(div_corr[c]),
+            })
+        # summary rows at the bottom
+        w.writerow({
+            "cell_id":   "GLOBAL_SUM",
+            "x_norm":    "",
+            "y_norm":    "",
+            "div_Fpre":  float(np.sum(div_pre)),
+            "div_Fcorr": float(np.sum(div_corr)),
+        })
+        w.writerow({
+            "cell_id":   "MAX_ABS",
+            "x_norm":    "",
+            "y_norm":    "",
+            "div_Fpre":  float(np.max(np.abs(div_pre))),
+            "div_Fcorr": float(np.max(np.abs(div_corr))),
+        })
+    print(f"  [Saved] {path7}")
+    print(f"    max|div(Fpre)|  = {np.max(np.abs(div_pre)):.3e}  (should be nonzero)")
+    print(f"    max|div(Fcorr)| = {np.max(np.abs(div_corr)):.3e}  (should be ~0)")
+
+
 
 # MAIN
 def main():
@@ -567,6 +678,10 @@ def main():
     d40 = results[40]
     report_matrix_coefficients(d40["mesh"], d40["U"], CASE_DIR[40])
 
+    # Tasks 6 & 7: Flux diagnostics (base case 40×40, Re=100)
+    print("\n── Flux diagnostics (Tasks 6 & 7) ──")
+    save_task6_task7_diagnostics(d40["mesh"], d40["U"], CASE_DIR[40])
+
     print(f"\n{'='*60}")
     print(f"  Done. All outputs in '{OUT_DIR}/'")
     print(f"{'='*60}")
@@ -576,3 +691,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
