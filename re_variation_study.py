@@ -40,15 +40,13 @@ GHIA_U   = np.array([1.,0.8412,0.7887,0.7372,0.6872,0.2315,0.00332,-0.1364,
 # Re study config
 RE_LIST  = [100, 200, 400, 1000]
 NX = NY  = 40        # fixed grid for Re comparison (keep mesh constant)
-N_OUTER  = 800       # more iterations for higher Re
+N_OUTER  = 800       # more iterations, at max 800, for higher Re
 OUT_DIR  = "analysis_output"
-
-# Under-relaxation per Re (higher Re needs more conservative relaxation)
 RELAX = {
     100:  0.7,
-    200:  0.6,
-    400:  0.5,
-    1000: 0.4,
+    200:  0.7,
+    400:  0.7,
+    1000: 0.7,
 }
 COLORS = {100: "#1f77b4", 200: "#ff7f0e", 400: "#2ca02c", 1000: "#d62728"}
 os.makedirs(OUT_DIR, exist_ok=True)
