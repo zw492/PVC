@@ -20,9 +20,7 @@ from pressure_correction import (
     divergence_of_face_flux,
 )
 
-# -----------------------------------------------------------------------------
-# 这里固定成你报告正文的基线算例（如 40x40, Re=100）
-# -----------------------------------------------------------------------------
+# Fixed to the baseline case used in the main report text (e.g. 40x40, Re=100)
 NX = 40
 NY = 40
 RE = 100
@@ -30,21 +28,20 @@ ALPHA_U = 0.7
 GS_SWEEPS = 200
 N_OUTER_MAX = 1200
 TOL_DIV = 1e-13
-TOL_DU = None      # 如果想再加一个速度变化停止准则，可改成浮点数
+TOL_DU = None      # If wished to add a stopping criterion based on velocity change, set this to a float
 CASE_DIR = f"taskdiag_case_{NX}x{NY}_Re{RE}"
 OUT_DIR = Path(f"taskdiag_output_{NX}x{NY}_Re{RE}")
 OUT_DIR.mkdir(exist_ok=True)
 
-# Task 7 （40x40）
-# 生成代表性单元
-# 你想和某张现成截图完全一致，可把这里改成对应编号。
+# Task 7 (40x40)
+# Generate representative cells
 PREFERRED_SAMPLE_CELLS = [8, 303, 600, 792, 1215]
 
 
 def choose_sample_cells(n_cells: int) -> list[int]:
-    """选取 Task 7 展示用的单元编号。
-    - 预设编号在网格范围内，就先用
-    - 网格较小（20x20），就自动过滤非法编号，必要时均匀
+    """Choose cell indices for Task 7 display.
+    - If the preset indices are within the mesh range, use them first
+    - For a smaller mesh (e.g. 20x20), automatically filter invalid indices and use evenly spaced fallbacks if needed
     """
     out = [c for c in PREFERRED_SAMPLE_CELLS if 0 <= c < n_cells]
     if len(out) >= 5:
@@ -58,7 +55,7 @@ def choose_sample_cells(n_cells: int) -> list[int]:
 
 
 def ensure_case() -> None:
-    """算例不在，就自动生成"""
+    """Automatically generate the case if it does not exist."""
     if not os.path.exists(CASE_DIR):
         write_lid_driven_cavity_case(
             case_dir=CASE_DIR, nx=NX, ny=NY, d=0.1, U_lid=1.0, Re=RE
@@ -66,7 +63,7 @@ def ensure_case() -> None:
 
 
 def load_case():
-    """读网格、初始场、物性参数和边界条件。"""
+    """Read mesh, initial fields, transport properties, and boundary conditions."""
     mesh = Mesh.from_folder(f"{CASE_DIR}/mesh")
     bc = json.loads(Path(f"{CASE_DIR}/bc.json").read_text())
     params = json.loads(Path(f"{CASE_DIR}/params.json").read_text())
@@ -81,16 +78,16 @@ def load_case():
 
 
 def save_csv(path: Path, header: str, arr: np.ndarray) -> None:
-    """统一保存 CSV"""
+    """Save CSV in a uniform format."""
     np.savetxt(path, arr, delimiter=",", header=header, comments="")
     print(f"[Saved] {path}")
 
 
 def plot_task12(inner_histories: dict, outer_iters: np.ndarray, div_hist: np.ndarray, dU_hist: np.ndarray) -> None:
-    """Task 12 图：内层残差 + 外层收敛。"""
+    """Task 12 figure: inner residuals + outer convergence."""
     fig, axes = plt.subplots(2, 2, figsize=(12, 8))
 
-    # 动量方程inner GS
+    # Inner GS for the momentum equations
     ax = axes[0, 0]
     if "Ux_iter1" in inner_histories:
         k, r = inner_histories["Ux_iter1"]
@@ -110,7 +107,7 @@ def plot_task12(inner_histories: dict, outer_iters: np.ndarray, div_hist: np.nda
     ax.grid(True, which="both", ls="--", alpha=0.4)
     ax.legend(fontsize=8)
 
-    # 压力修正方程inner GS
+    # Inner GS for the pressure-correction equation
     ax = axes[0, 1]
     if "p_iter1" in inner_histories:
         k, r = inner_histories["p_iter1"]
@@ -124,7 +121,7 @@ def plot_task12(inner_histories: dict, outer_iters: np.ndarray, div_hist: np.nda
     ax.grid(True, which="both", ls="--", alpha=0.4)
     ax.legend(fontsize=8)
 
-    # 外层 div(Fcorr)
+    # Outer div(Fcorr)
     ax = axes[1, 0]
     ax.semilogy(outer_iters, np.clip(div_hist, 1e-30, None), lw=1.8)
     ax.axhline(TOL_DIV, color="red", ls=":", lw=1.0, label=f"TOL_DIV={TOL_DIV:.0e}")
@@ -134,7 +131,7 @@ def plot_task12(inner_histories: dict, outer_iters: np.ndarray, div_hist: np.nda
     ax.grid(True, which="both", ls="--", alpha=0.4)
     ax.legend(fontsize=8)
 
-    # 外层速度变化量收敛
+    # Outer convergence of velocity change
     ax = axes[1, 1]
     ax.semilogy(outer_iters, np.clip(dU_hist, 1e-30, None), lw=1.8)
     ax.set_title("Task 12 — outer convergence (velocity change)")
@@ -154,18 +151,18 @@ def main() -> None:
     mesh, U, p, nu, bcU, bcp = load_case()
     n_cells = len(mesh.cells)
 
-    # 所有边界 face：Task 6 要检查 F_pre 在这些 face 上是否为 0
+    # All boundary faces: for Task 6 we need to check whether F_pre on these faces is zero
     boundary_faces = sorted({f for patch in mesh.patches for f in patch.face_ids})
     sample_cells = choose_sample_cells(n_cells)
 
-    # 历史量：分别用于 Task 6 / Task 11 / Task 12
+    # Histories: used separately for Task 6 / Task 11 / Task 12
     div_hist: list[float] = []
     dU_hist: list[float] = []
     task6_rows: list[list[float]] = []
     task11_rows: list[list[float]] = []
-    p_prime_init = np.zeros(n_cells)   # pressure correction warm start
+    p_prime_init = np.zeros(n_cells)   # warm start for pressure correction
 
-    # 保存代表性inner residual 曲线
+    # Store representative inner residual curves
     inner_histories: dict[str, tuple[np.ndarray, np.ndarray]] = {}
     final_task7_rows: list[list[float]] = []
     stop_reason = "max_outer"
@@ -173,7 +170,7 @@ def main() -> None:
     for it in range(1, N_OUTER_MAX + 1):
         U_old = U.copy()
 
-        # 动量预测抓取inner GS residual history
+        # Capture inner GS residual history from the momentum predictor
         with contextlib.redirect_stdout(io.StringIO()):
             Ustar, aP_x, aP_y, mom_hist = momentum_predictor(
                 mesh, U, nu, bcU, alphaU=ALPHA_U, gs_sweeps=GS_SWEEPS, return_history=True
@@ -181,7 +178,7 @@ def main() -> None:
 
         Fpre = compute_face_flux_linear(mesh, Ustar, bcU)
 
-        # 压力修正抓取 inner GS residual history
+        # Capture inner GS residual history from the pressure-correction solve
         with contextlib.redirect_stdout(io.StringIO()):
             p_prime, p_hist = solve_pressure_equation(
                 mesh,
@@ -199,7 +196,7 @@ def main() -> None:
             )
         p_prime_init = p_prime.copy()
 
-        # 得到修正后的通量、速度与压力
+        # Obtain corrected flux, velocity, and pressure
         Fcorr = correct_face_flux(mesh, Fpre, p_prime, aP_x, aP_y)
         U = correct_cell_velocity(mesh, Ustar, p_prime, aP_x, aP_y, bc_p=bcp)
         p += p_prime
@@ -212,7 +209,8 @@ def main() -> None:
         div_hist.append(div_inf)
         dU_hist.append(dU_inf)
 
-        # Task 6：这些量理论上应为 0（数值上到 roundoff/solver tolerance）
+        # Task 6: these quantities should theoretically be zero
+        # (numerically, down to roundoff / solver tolerance)
         task6_rows.append([
             it,
             float(np.max(np.abs(Fpre[boundary_faces]))),
@@ -220,7 +218,7 @@ def main() -> None:
             float(np.sum(div_pre)),
         ])
 
-        # Task 11：inner solve初始/最终 residual
+        # Task 11: initial/final residuals of the inner solves
         ux_hist = np.array(mom_hist["Ux"], dtype=float)
         uy_hist = np.array(mom_hist["Uy"], dtype=float)
         p_hist_arr = np.array(p_hist, dtype=float)
@@ -231,7 +229,7 @@ def main() -> None:
             p_hist_arr[0, 1], p_hist_arr[-1, 1],
         ])
 
-        # Task 12：开始和最后的inner 曲线
+        # Task 12: store inner curves for the first and final outer iterations
         if it == 1:
             inner_histories["Ux_iter1"] = (ux_hist[:, 0], ux_hist[:, 1])
             inner_histories["Uy_iter1"] = (uy_hist[:, 0], uy_hist[:, 1])
@@ -247,13 +245,14 @@ def main() -> None:
             print(f"[Stop] outer iter {it}: div_inf={div_inf:.3e}, dU_inf={dU_inf:.3e}")
             break
 
-    # 记录最终一次 inner 曲线
+    # Store the inner curves from the final iteration
     outer_final = len(div_hist)
     inner_histories["Ux_iter_last"] = (ux_hist[:, 0], ux_hist[:, 1])
     inner_histories["Uy_iter_last"] = (uy_hist[:, 0], uy_hist[:, 1])
     inner_histories["p_iter_last"] = (p_hist_arr[:, 0], p_hist_arr[:, 1])
 
-    # Task 7：在最终迭代抽取若干代表性单元，比较 net Fpre 与 net Fcorr
+    # Task 7: at the final iteration, extract several representative cells
+    # and compare net Fpre with net Fcorr
     for c in sample_cells:
         final_task7_rows.append([
             outer_final,
@@ -262,7 +261,7 @@ def main() -> None:
             float(div_corr[c]),
         ])
 
-    # 保存CSV
+    # Save CSV files
     save_csv(
         OUT_DIR / "task6_zero_checks.csv",
         "iteration,max_abs_boundary_Fpre,sum_boundary_Fpre,global_sum_cell_flux_pre",
@@ -284,14 +283,14 @@ def main() -> None:
         np.column_stack([np.arange(1, outer_final + 1), np.array(div_hist), np.array(dU_hist)]),
     )
 
-    # 代表性inner residual 曲线存 CSV
+    # Save representative inner residual curves as CSV
     for key, (k, r) in inner_histories.items():
         save_csv(OUT_DIR / f"{key}.csv", "sweep,residual", np.column_stack([k, r]))
 
-    # Task 12 图
+    # Task 12 plot
     plot_task12(inner_histories, np.arange(1, outer_final + 1), np.array(div_hist), np.array(dU_hist))
 
-    # 摘要
+    # Summary
     summary = [
         "PVC task diagnostics summary",
         "=" * 60,
