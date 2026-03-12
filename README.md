@@ -109,6 +109,12 @@ python re_variation_analysis.py
 
 Outputs go to `re_analysis_output/`. Requires completed results in `cavity_40x40_Re{Re}/` for all four Re values.
 
+### 5. Results for tasks 6, 7, 12
+
+```bash
+task6_7_11_12_driver.py 
+```
+
 ---
 
 ## Configuration
