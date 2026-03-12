@@ -124,17 +124,6 @@ Key parameters in `Master_Analysis.py`:
 | `TOL_DIV`    | 1e-5       | Convergence tolerance on ‖∇·F^corr‖_∞  |
 | `TOL_DU`     | 1e-6       | Convergence tolerance on ‖ΔU‖_∞        |
 
-Under-relaxation factors used in the Re study (`re_variation_study.py`):
-
-| Re   | α_U |
-|------|-----|
-| 100  | 0.7 |
-| 200  | 0.6 |
-| 400  | 0.5 |
-| 1000 | 0.4 |
-
----
-
 ## Case Directory Layout
 
 Each case directory (e.g. `cavity_case/`) has the following structure after setup:
