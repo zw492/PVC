@@ -488,15 +488,15 @@ def write_error_table(results):
 
 def write_iterations_table(conv_data):
     lines = ["Grid Convergence Summary (Re=100)", "=" * 45,
-             f"{'Grid':>8}  {'Iterations (plateau)':>22}  {'Final div_inf':>14}",
+             f"{'Grid':>8}  {'Iterations (tol)':>22}  {'Final div_inf':>14}",
              "-" * 45]
     for n in sorted(conv_data.keys()):
         dh, _, nc = conv_data[n]
         final_div = float(dh[-1]) if len(dh) > 0 else float("nan")
         lines.append(f"{'%dx%d'%(n,n):>8}  {str(nc):>22}  {final_div:>14.3e}")
     lines += ["=" * 45,
-              "Note: finer grid → stronger coupling → more iters to plateau",
-              "div_inf plateaus at O(Δx) — consistent with 1st-order upwind truncation error"]
+              "Note: finer grid → stronger coupling → more iters to tol",
+              "div_inf tols at O(Δx) — consistent with 1st-order upwind truncation error"]
     path = os.path.join(OUT_DIR, "iterations_table.txt")
     with open(path, "w") as f: f.write("\n".join(lines))
     print(f"  [Saved] {path}")
@@ -691,4 +691,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
