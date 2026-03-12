@@ -163,7 +163,7 @@ def plot_outer_convergence(div_hist, dU_hist):
     iters = np.arange(1, len(div_hist) + 1)
     fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(9, 7), sharex=True)
     ax1.semilogy(iters, div_hist, color="#1f77b4", lw=1.5)
-    ax1.axhline(1e-5, color="red", ls=":", lw=1, label="tol plateau")
+    ax1.axhline(1e-5, color="red", ls=":", lw=1, label="tol")
     ax1.set_ylabel(r"$\|\nabla \cdot \mathbf{F}_{corr}\|_\infty$", fontsize=12)
     ax1.set_title(f"SIMPLE outer loop convergence — {N}×{N}, Re={RE}")
     ax1.legend(fontsize=9); ax1.grid(True, which="both", ls="--", alpha=0.4)
@@ -293,7 +293,7 @@ def write_iterations_table(div_hist, n_conv):
     lines = [
         "Grid Convergence Summary (Re=100, 20×20)",
         "=" * 45,
-        f"  Outer iterations to plateau: {n_conv}",
+        f"  Outer iterations to tol: {n_conv}",
         f"  Final ||div(Fcorr)||_inf : {div_hist[-1]:.3e}",
         "=" * 45,
     ]
