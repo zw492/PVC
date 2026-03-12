@@ -128,7 +128,7 @@ Key parameters in `Master_Analysis.py`:
 | `ALPHA_U`    | 0.7        | Momentum under-relaxation factor        |
 | `GS_SWEEPS`  | 200        | Gauss–Seidel sweeps per linear solve    |
 | `N_OUTER`    | 800        | Maximum SIMPLE outer iterations         |
-| `TOL_DIV`    | 1e-5       | Convergence tolerance on ‖∇·F^corr‖_∞  | !Reminder: Adjust in accordance to output specifications in report.
+| `TOL_DIV`    | 1e-5       | Convergence tolerance on ‖∇·F^corr‖_∞  !Reminder: Adjust in accordance to output specifications in report.| 
 | `TOL_DU`     | 1e-6       | Convergence tolerance on ‖ΔU‖_∞        |
 
 ## Case Directory Layout
